@@ -68,6 +68,6 @@ if __name__ == '__main__':
         s.close()
         exit()
     except (SystemExit, KeyboardInterrupt):
-        s.send("exit")
-        s.close()
+        print "exit"
+        s.send("{exit,}")
         exit()

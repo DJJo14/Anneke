@@ -16,7 +16,7 @@ clientlist = []
 baseadr = 225.1
 
 
-clientport = 52000
+clientport = 5200
 
 class connection:
     def __init__(self, client, freq, channel):
@@ -30,7 +30,6 @@ class connection:
         #print "stream close:" + str(self.freq) + "." + str(self.channel) + " from: " + str(self.client)
 
 class dvbworker:
-    ## TODO need to add connection
     #When workerconnects the server wil create this object
     #A connection can have multible workers, every worker has his one object
     def __init__(self, socket, name, priority, freq):
@@ -39,62 +38,130 @@ class dvbworker:
         self.priority = priority
         self.freq = freq
         self.openfreq = 0
+        self.openchannels = []
         self.connections = []
+        
         #self.socket.send("Created")
         
-    def __del__(self):
-        print "del"
+    #def __del__(self):
+    #    print "del dvbworker"
         
     def newconnection(self, conection, freq):
         self.connections.append(conection)
+        if self.openfreq == 0:
+            print self.name + ": open freq"
+            self.openfreq = freq
+        else:
+            print self.name + ": freq already open"
+         
+        if conection.channel not in self.openchannels:
+            print self.name + ": open channel"
+            self.openchannels.append(conection.channel)
+            if not Channelsfile[self.openfreq]['tsdecriptopt']:
+                
+                print self.name + ": No decripter needed"
+            else:
+                print self.name + ": Find decripter"
+                for w in decriptworkerlist:
+                    if w.openchannel == "0":
+                        w.decriptopen(baseadr + '.' + str(self.openfreq) + "." + str(conection.channel))
+                        break
+        else:
+            print self.name + ": channel is already open"
+             
         config = '#config generate by anneke'
-        for c in self.connections:
+        for c in self.openchannels:
             for i in channellist:
-                if i == (baseadr + '.' + str(c.freq) + "." + str(c.channel)):
-                    config = config + "\r\n" + baseadr + '.' + str(c.freq) + "." + str(c.channel) + ":"
-                    if Channelsfile[c.freq]['tsdecriptopt']:
+                if i == (baseadr + '.' + str(self.openfreq) + "." + str(c)):
+                    config = config + "\r\n" + baseadr + '.' + str(self.openfreq) + "." + str(c) + ":"
+                    if Channelsfile[self.openfreq]['tsdecriptopt']:
                         config = config + str(decriptport)
                     else:
                         config = config + str(lisport)
-                    config = config + str(Channelsfile[c.freq]['Channels'][c.channel])
+                    config = config + str(Channelsfile[self.openfreq]['Channels'][c])
                     break
         if len(self.connections) == 1:
-            self.openfreq = freq
-            print "dvbworker: "+ str(self.name) + " does freq:" + str(self.openfreq) + " config:\r\n" + config + "\r\n"
+            print self.name + ": open freq:" + str(self.openfreq) + " config:\r\n" + config + "\r\n"
             self.socket.send("{open:" + str(self.name) + "@" + "dvbworker\0"\
                              + str(self.openfreq) + "\0"\
                              + Channelsfile[str(self.openfreq)]['dvblastopt'] + "\0"\
                              + config + "\0" +",}")
         else:
-            print "dvbworker update channel. config:\r\n" + config
+            print self.name + ": update channel. config:\r\n" + config
             self.socket.send("{update:" + str(self.name) + "@" + "dvbworker\0"\
                              + config + "\0" +",}")
             
     def removeconnection(self, conection):
+        countopenchannel = 0
         for c in self.connections:
-            if c.client == conection.client and c.freq == conection.freq and c.channel == conection.channel:
-                c.close()
-                self.connections.remove(c)
+            if c.freq == conection.freq and c.channel == conection.channel:
+                countopenchannel=countopenchannel+1
+                if c.client == conection.client: 
+                    c.close()
+                    self.connections.remove(c)
+        if countopenchannel < 2:
+            self.openchannels.remove(conection.channel)
+            if not Channelsfile[self.openfreq]['tsdecriptopt']:
+                print self.name + ": No decripter open"
+            else:
+                for w in decriptworkerlist:
+                    if w.openchannel == baseadr + '.' + str(self.openfreq) + "." + str(conection.channel):
+                        w.decriptclose(baseadr + '.' + str(self.openfreq) + "." + str(conection.channel))
+                        break
+                
         if len(self.connections) < 1:
-            print "dvbworker: "+ str(self.name) + " got noting to do"
+            print self.name + ": noting to do"
             self.socket.send("{close:" + str(self.name) + "@" + "dvbworker\0"\
                              + str(self.openfreq) +",}")
             self.openfreq = 0
+            self.openchannels = []
         else:
             config = '#config generate by anneke'
-            for c in self.connections:
+            for c in self.openchannels:
                 for i in channellist:
-                    if i == (baseadr + '.' + str(c.freq) + "." + str(c.channel)):
-                        config = config + "\r\n" + baseadr + '.' + str(c.freq) + "." + str(c.channel) + ":"
-                        if Channelsfile[c.freq]['tsdecriptopt']:
+                    if i == (baseadr + '.' + str(self.openfreq) + "." + str(c)):
+                        config = config + "\r\n" + baseadr + '.' + str(self.openfreq) + "." + str(c) + ":"
+                        if Channelsfile[self.openfreq]['tsdecriptopt']:
                             config = config + str(decriptport)
                         else:
                             config = config + str(lisport)
-                        config = config + str(Channelsfile[c.freq]['Channels'][c.channel])
+                        config = config + str(Channelsfile[self.openfreq]['Channels'][c])
                         break
-            print "dvbworker update channel. config:\r\n" + config + "\r\n"
+            print self.name + ": update channel. config:\r\n" + config + "\r\n"
             self.socket.send("{update:" + str(self.name) + "@" + "dvbworker\0"\
                              + config + "\0" +",}")
+
+class decriptworker:
+    def __init__(self, socket, name, priority):
+        self.socket = socket
+        self.name = name
+        self.priority = priority
+        self.openchannel = "0"
+        
+    #def __del__(self):
+    #    print "del decriptworker"
+        
+    def decriptopen(self, channel):
+        self.openchannel = channel
+        print self.name + ":  decriptopen " + self.openchannel
+        self.socket.send("{decriptopen:" + str(self.name) + "@" + "decriptworker\0" +\
+                         str(self.openchannel) + "\0" +\
+                         str(lisport) + "\0" +\
+                         str(decriptport) + "\0" +\
+                         Channelsfile[channel.split(".")[2]]['tsdecriptopt'] + "\0" +\
+                         ",}")
+        
+    def decriptclose(self, channel):
+        if self.openchannel != channel:
+            print self.name + ": BUGGGGG..."
+        else:
+            print self.name + ":  decriptclose " + self.openchannel
+            self.socket.send("{decriptclose:" + str(self.name) + "@" + "decriptworker\0" +\
+                             str(self.openchannel) + "\0" +\
+                             ",}")
+            self.openchannel = "0"
+    
+
 
 def contains(list, filter):
     c = 0
@@ -171,7 +238,7 @@ if __name__ == '__main__':
          
          
         serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        serversocket.bind(('localhost', clientport))
+        serversocket.bind(('0.0.0.0', clientport))
         serversocket.listen(5)
         print "Server is listening for clients\n"
         serversocket.settimeout(1)
@@ -194,29 +261,32 @@ if __name__ == '__main__':
                             break
                         
                     if (len(data) < 2) or (data.find("exit") != -1):
-                        print "cut " + str(clients.getpeername()),
+                        print "cut " + str(clients.getpeername())
                         for i in dvbworkerlist[:]:
-                            print str(i.socket) + " == " + str(clients)
                             if i.socket == clients:
-                                print " dvbworker: " + str(i.name)
+                                print " dvbworker: " + str(i.name),
                                 dvbworkerlist.remove(i)
-                        for i in clientlist:
+                        for i in clientlist[:]:
                             if i == clients:
-                                print " Client: " + str(i.name)
+                                print " Client: " + str(i.getpeername()),
                                 clientlist.remove(i)
-                        #for i in decriptworkerlist:
-                        #    if i.socket == clients:
-                        #        print " decriptworker: " + str(i.name)
-                        #        decriptworkerlist.remove(i)
+                        for i in decriptworkerlist[:]:
+                            if i.socket == clients:
+                                print " decriptworker: " + str(i.name),
+                                decriptworkerlist.remove(i)
                         connectionlist.remove(clients)
-                        print str(dvbworkerlist)
-                        print str(connectionlist)
+                        print ""
+                        print "stil connected:",
+                        print "connection(s): " + str(len(connectionlist))
+                        print "dvbworker(s): " + str(len(dvbworkerlist))
+                        print "decriptworker(s): " + str(len(decriptworkerlist))
+                        print "client(s): " + str(len(clientlist))
                         clients.close()
                             
                     else:
                         print str(datetime.datetime.now().time()) + "," + str(clients.getpeername()[0]) + ","  + data
                         if data.startswith("connect:"):
-                            data = data.lstrip("connect:")
+                            data = data[8:]
                             if data.split("@")[1].startswith("client"):
                                 clientlist.append(clients)
                             elif data.split("@")[1].startswith("dvbworker"):
@@ -224,9 +294,9 @@ if __name__ == '__main__':
                                            data.split(".")[1], data.split(".")[2].translate(None, '[]\'\ ').split(',')))
                                 sorted(dvbworkerlist, key=lambda dvbworker: dvbworker.priority)
                             elif data.split("@")[1].startswith("decriptworker"):
-                                print "ToDo create dicriptworker" + data.split("@")[0]+ ' ' + data.split(".")[1]
-                                #decriptworkerlist.append(decriptworker(data.split("@")[0],
-                                #           data.split(".")[1]))
+                                #print "ToDo create dicriptworker" + data.split("@")[0]+ ' ' + data.split(".")[1]
+                                decriptworkerlist.append(decriptworker(clients, data.split("@")[0],
+                                           data.split(".")[1]))
                         elif data.startswith("add:"):
                             if data.count(".") != 3:
                                 print "error data: " + data
