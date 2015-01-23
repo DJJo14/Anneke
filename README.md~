@@ -49,8 +49,6 @@ Tips
 - start with a smal configuration and expand if it is working.
 - create or edit a service for the anneke_client.
 - If the decriptworker and dvbworker run on the same device use the loopback network interface. (option /ifindex=0 in the Chanels.cfg)
-- In tvheadend 3.9 set the "max input streams" to a number like 5. else tvheadend wil open ALL channels at startup.
-- Without the dvblast "-u" or "--budget-mode" option, the dvb device wil only output 2 or 3 channels
 - run "./dvblast --help" and "./tsdecrypt --help" for all the options.
 
 

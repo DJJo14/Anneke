@@ -27,7 +27,6 @@ tsdecriptopt="-s <server>:<port> -A NEWCAMD -B <key> -c CONAX -K"
 4='/ifindex=1      1       14'
 5='/ifindex=1      1       15'
 
-
 [2]
 #options for opening dvblast
 dvblastopt="-f 576000000 -F 910 -WYeuUz"
@@ -44,7 +43,6 @@ tsdecriptopt="-s <server>:<port> -A NEWCAMD -B <key> -c CONAX -K"
 6='/ifindex=1      1       26'
 7='/ifindex=1      1       27'
 8='/ifindex=1      1       28'
-
 
 [5]
 #options for opening dvblast

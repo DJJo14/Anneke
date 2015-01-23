@@ -92,14 +92,12 @@ class dvbworker:
                              + config + "\0" +",}")
             
     def removeconnection(self, conection):
-        countopenchannel = 0
         for c in self.connections:
             if c.freq == conection.freq and c.channel == conection.channel:
-                countopenchannel=countopenchannel+1
                 if c.client == conection.client: 
                     c.close()
                     self.connections.remove(c)
-        if countopenchannel < 2:
+        if len(self.connections) < 2:
             self.openchannels.remove(conection.channel)
             if not Channelsfile[self.openfreq]['tsdecriptopt']:
                 print self.name + ": No decripter open"

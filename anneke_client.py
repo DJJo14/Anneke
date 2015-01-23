@@ -10,13 +10,13 @@ thelist = []
 class connection:
     def __init__(self, name):
         self.name = name
-        print "open van stream "  + str(self.name)
+        print str(datetime.datetime.now().time()) + "," + "open stream  "  + str(self.name)
         
     def close(self):
-        print "close van stream "
+        print str(datetime.datetime.now().time()) + "," + "close stream "  + str(self.name)
     
-    def __del__(self):
-        print "del van stream"
+    #def __del__(self):
+    #    print "del van stream"
 
 def contains(list, filter):
     for x in list:
@@ -33,7 +33,7 @@ if __name__ == '__main__':
         NAME = Configfile['GENERAL']['name']
         print "Name: " + str(PROCNAME) + " Host: " + str(HOST) + " Port: " + str(PORT)
         for proc in psutil.process_iter():
-            if proc.name == PROCNAME:
+            if proc.name() == PROCNAME:
                 process = proc
         if not process:
             print "not found tvheadend"
@@ -55,14 +55,14 @@ if __name__ == '__main__':
                 if not contains(thelist, lambda x: x.name == list.local_address[0]):
                     thelist.append(connection(list.local_address[0]))
                     s.send("{add:" + str(list.local_address[0]) + ",}")
+            time.sleep(0.01)
             for list in thelist:
                 #print thelist
                 if not contains(process.get_connections(kind='udp'), lambda x: x.local_address[0] == list.name):
                     s.send("{remove:" + str(list.name) + ",}")
                     list.close()
                     thelist.remove(list)
-                    print "removed"
-            time.sleep(0.1)
+                    #print "removed"
     except socket.error:
         print "conection to server lost"
         s.close()

@@ -5,7 +5,6 @@ host='localhost'
 #port anneke server
 port='5200'
 
-#dvbworker selection
 [dvbworker]
 [[dvblast1]]
 #the base command for dvblast
@@ -25,7 +24,7 @@ freq=1,2,5
 #worker priority
 priority=10
 
-#decriptworker selection
+
 [decriptworker]
 [[tsdecript1]]
 #ip Adress worker
